@@ -34,39 +34,48 @@ else:
         "발급받은 Gemini API Key를 입력하면 앱을 정상적으로 사용할 수 있습니다."
     )
 
-# PDF 파일 업로드
-uploaded_file = st.file_uploader(
-    "공부할 PDF 강의 자료를 업로드하세요", type=["pdf"]
+# PDF 파일 여러 개 업로드 가능하도록 설정 (accept_multiple_files=True)
+uploaded_files = st.file_uploader(
+    "공부할 PDF 강의 자료들을 업로드하세요 (여러 개 선택 가능)",
+    type=["pdf"],
+    accept_multiple_files=True,
 )
 
-if uploaded_file and api_key:
+if uploaded_files and api_key:
   client = genai.Client(api_key=api_key)
 
-  # PDF 텍스트 추출 (세션에 저장)
-  if "pdf_text" not in st.session_state:
-    with st.spinner("📄 PDF 파일 분석 중..."):
+  # 업로드된 모든 파일의 이름을 조합하여 변경 감지 및 텍스트 통합 추출
+  file_names = tuple(f.name for f in uploaded_files)
+  if "pdf_text" not in st.session_state or st.session_state.get("uploaded_filenames") != file_names:
+    with st.spinner("📄 PDF 파일들 분석 중..."):
       try:
-        reader = PdfReader(uploaded_file)
-        text = ""
-        for page in reader.pages:
-          extracted = page.extract_text()
-          if extracted:
-            text += extracted + "\n"
-        st.session_state["pdf_text"] = text
+        combined_text = ""
+        for uploaded_file in uploaded_files:
+          reader = PdfReader(uploaded_file)
+          for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+              combined_text += extracted + "\n"
+        st.session_state["pdf_text"] = combined_text
+        st.session_state["uploaded_filenames"] = file_names
       except Exception as e:
         st.error(f"PDF를 읽는 중 오류가 발생했습니다: {e}")
         st.session_state["pdf_text"] = ""
 
   text = st.session_state.get("pdf_text", "")
 
+  # PDF에서 글자가 읽히지 않았을 때 안내
+  if not text.strip():
+    st.warning("⚠️ PDF 파일에서 텍스트를 추출하지 못했습니다. 스캔된 이미지 PDF인지 확인해 주세요.")
 
-  # 문제 생성 함수
-  def generate_questions(num_count=10):
-    with st.spinner(f"🤖 준피티가 문제를 출제하고 있습니다..."):
-      limited_text = text[:3000]
+
+  # 문제 생성 함수 (기본 20문제로 설정)
+  def generate_questions(num_count=20):
+    with st.spinner(f"🤖 준피티가 20문제를 출제하고 있습니다..."):
+      limited_text = text[:6000] if text else "강의 자료 내용을 기반으로 문제를 출제해 주세요."
 
       prompt = f"""
-            다음 강의 텍스트를 바탕으로 핵심을 파악할 수 있는 객관식 문제 {num_count}개를 만들어주세요.
+            다음 강의 텍스트들을 바탕으로 핵심을 파악할 수 있는 객관식 문제 {num_count}개를 만들어주세요.
             반드시 아래 JSON 형식으로만 응답해주세요. 마크다운 백틱(```json ... ```)을 쓰지 말고 순수 JSON 문자열만 반환해주세요.
             
             [
@@ -107,10 +116,10 @@ if uploaded_file and api_key:
         return False
 
 
-  # 최초 문제 생성 버튼 (10문제)
-  if text and "questions" not in st.session_state:
-    if st.button("🚀 준피티에게 문제 생성 요청하기 (10문제 다 맞으면 선물!)"):
-      if generate_questions(10):
+  # 최초 문제 생성 버튼 (20문제)
+  if "questions" not in st.session_state:
+    if st.button("🚀 준피티에게 문제 생성 요청하기 (20문제 다 맞으면 선물!)"):
+      if generate_questions(20):
         st.rerun()
 
   # 에러 메시지 출력
@@ -232,8 +241,8 @@ if "questions" in st.session_state and st.session_state["questions"]:
     components.html(share_html, height=60)
 
   st.markdown("---")
-  # 추가 10문제 생성 버튼
-  if uploaded_file and api_key:
-    if st.button("➕ 10문제 더 만들기"):
-      if generate_questions(10):
+  # 추가 20문제 생성 버튼
+  if uploaded_files and api_key:
+    if st.button("➕ 20문제 더 만들기"):
+      if generate_questions(20):
         st.rerun()
