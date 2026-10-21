@@ -14,14 +14,21 @@ st.write(
     " 있습니다!"
 )
 
-# 사이드바 설정 (API 키 입력)
-with st.sidebar:
-  st.header("⚙️ 설정")
-  api_key = st.text_input("Gemini API Key", type="password")
-  st.markdown("[Google AI Studio에서 API 키 발급받기](https://aistudio.google.com/)")
-  st.info(
-      "발급받은 Gemini API Key를 입력하면 앱을 정상적으로 사용할 수 있습니다."
-  )
+
+# Streamlit Secrets에 키가 등록되어 있는지 확인 후 자동 로드
+if "GEMINI_API_KEY" in st.secrets:
+  api_key = st.secrets["GEMINI_API_KEY"]
+else:
+  # Secrets가 없을 경우에만 기존 사이드바 설정창 표시
+  with st.sidebar:
+    st.header("⚙️ 설정")
+    api_key = st.text_input("Gemini API Key", type="password")
+    st.markdown(
+        "[Google AI Studio에서 API 키 발급받기](https://aistudio.google.com/)"
+    )
+    st.info(
+        "발급받은 Gemini API Key를 입력하면 앱을 정상적으로 사용할 수 있습니다."
+    )
 
 # PDF 파일 업로드
 uploaded_file = st.file_uploader(
