@@ -54,11 +54,12 @@ if uploaded_file and api_key:
   text = st.session_state.get("pdf_text", "")
 
 
-  # 문제 생성 함수 (속도를 위해 기본 10문제로 설정)
+  # 문제 생성 함수 (속도를 위해 텍스트 양을 3000자로 최적화)
   def generate_questions(num_count=10):
-    with st.spinner(
-        f"🤖 AI가 빛의 속도로 {num_count}개의 문제를 출제하고 있습니다..."
-    ):
+    with st.spinner(f"🤖 AI가 10초 내로 문제를 출제하고 있습니다..."):
+      # 속도와 토큰 제한 방지를 위해 텍스트 앞부분 3000자만 사용
+      limited_text = text[:3000]
+
       prompt = f"""
             다음 강의 텍스트를 바탕으로 핵심을 파악할 수 있는 객관식 문제 {num_count}개를 만들어주세요.
             반드시 아래 JSON 형식으로만 응답해주세요. 마크다운 백틱(```json ... ```)을 쓰지 말고 순수 JSON 문자열만 반환해주세요.
@@ -73,7 +74,7 @@ if uploaded_file and api_key:
             ]
             
             강의 텍스트:
-            {text[:8000]}
+            {limited_text}
             """
       try:
         response = client.models.generate_content(
@@ -94,7 +95,7 @@ if uploaded_file and api_key:
         if "questions" not in st.session_state:
           st.session_state["questions"] = []
         st.session_state["questions"].extend(new_questions)
-        st.success(f"✨ {len(new_questions)}개의 문제가 빠르게 추가되었습니다!")
+        st.success(f"✨ {len(new_questions)}개의 문제가 빠르게 생성되었습니다!")
       except Exception as e:
         st.error(f"AI 문제 생성 중 오류가 발생했습니다: {e}")
 
