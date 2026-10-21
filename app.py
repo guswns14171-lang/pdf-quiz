@@ -14,7 +14,6 @@ st.write(
     " 있습니다!"
 )
 
-
 # Streamlit Secrets에 키가 등록되어 있는지 확인 후 자동 로드
 if "GEMINI_API_KEY" in st.secrets:
   api_key = st.secrets["GEMINI_API_KEY"]
@@ -38,23 +37,32 @@ uploaded_file = st.file_uploader(
 if uploaded_file and api_key:
   client = genai.Client(api_key=api_key)
 
-  # PDF 텍스트 추출
-  with st.spinner("📄 PDF 파일 분석 중..."):
-    try:
-      reader = PdfReader(uploaded_file)
-      text = ""
-      for page in reader.pages:
-        extracted = page.extract_text()
-        if extracted:
-          text += extracted + "\n"
-    except Exception as e:
-      st.error(f"PDF를 읽는 중 오류가 발생했습니다: {e}")
-      text = ""
+  # PDF 텍스트 추출 (세션에 저장하여 중복 추출 방지)
+  if "pdf_text" not in st.session_state:
+    with st.spinner("📄 PDF 파일 분석 중..."):
+      try:
+        reader = PdfReader(uploaded_file)
+        text = ""
+        for page in reader.pages:
+          extracted = page.extract_text()
+          if extracted:
+            text += extracted + "\n"
+        st.session_state["pdf_text"] = text
+      except Exception as e:
+        st.error(f"PDF를 읽는 중 오류가 발생했습니다: {e}")
+        st.session_state["pdf_text"] = ""
 
-  if text and st.button("🚀 AI 문제 생성하기"):
-    with st.spinner("🤖 AI가 강의 내용을 분석하고 문제를 출제하고 있습니다..."):
+  text = st.session_state.get("pdf_text", "")
+
+  # 문제 생성 함수 정의 (기존 문제 목록에 이어붙이기)
+  def generate_questions(num_count=20):
+    with st.spinner(
+        f"🤖 AI가 강의 내용을 분석하고 {num_count}개의 문제를 출제하고"
+        " 있습니다..."
+    ):
       prompt = f"""
-            다음 강의 텍스트를 바탕으로 핵심을 파악할 수 있는 객관식 문제 3개를 만들어주세요.
+            다음 강의 텍스트를 바탕으로 핵심을 파악할 수 있는 객관식 문제 {num_count}개를 만들어주세요.
+            기존에 출제된 문제들과 겹치지 않도록 새로운 핵심 내용 위주로 다채롭게 만들어주세요.
             반드시 아래 JSON 형식으로만 응답해주세요. 마크다운 백틱(```json ... ```)을 쓰지 말고 순수 JSON 문자열만 반환해주세요.
             
             [
@@ -67,9 +75,8 @@ if uploaded_file and api_key:
             ]
             
             강의 텍스트:
-            {text[:10000]}
+            {text[:15000]}
             """
-
       try:
         response = client.models.generate_content(
             model="gemini-3.8-flash",
@@ -85,16 +92,25 @@ if uploaded_file and api_key:
         if res_text.endswith("```"):
           res_text = res_text[:-3]
 
-        questions = json.loads(res_text.strip())
-        st.session_state["questions"] = questions
-        st.success("✨ 문제가 성공적으로 생성되었습니다!")
+        new_questions = json.loads(res_text.strip())
+        if "questions" not in st.session_state:
+          st.session_state["questions"] = []
+        # 기존 문제 뒤에 새로운 문제들을 추가(누적)
+        st.session_state["questions"].extend(new_questions)
+        st.success(f"✨ {len(new_questions)}개의 문제가 성공적으로 추가되었습니다!")
       except Exception as e:
         st.error(f"AI 문제 생성 중 오류가 발생했습니다: {e}")
 
+  # 최초 문제 생성 버튼
+  if text and "questions" not in st.session_state:
+    if st.button("🚀 AI 문제 생성하기 (20문제)"):
+      generate_questions(20)
+      st.rerun()
+
 # 문제가 생성된 경우 화면에 표시
-if "questions" in st.session_state:
+if "questions" in st.session_state and st.session_state["questions"]:
   st.markdown("---")
-  st.subheader("📝 문제 풀기")
+  st.subheader(f"📝 문제 풀기 (총 {len(st.session_state['questions'])}문제)")
 
   user_answers = {}
   for i, q in enumerate(st.session_state["questions"]):
@@ -117,8 +133,8 @@ if "questions" in st.session_state:
         st.success(f"문제 {i+1} 정답! 🎉\n\n> **해설**: {q['explanation']}")
       elif selected:
         st.error(
-            f"문제 {i+1} 오답... (선택한 답: {selected} / 정답: "
-            f"'{correct_option}')\n\n> **해설**: {q['explanation']}"
+            f"문제 {i+1} 오답... (선택한 답: {selected} / 정답:"
+            f" '{correct_option}')\n\n> **해설**: {q['explanation']}"
         )
       else:
         st.warning(
@@ -127,3 +143,10 @@ if "questions" in st.session_state:
         )
 
     st.info(f"**총점: {score} / {len(st.session_state['questions'])}점**")
+
+  st.markdown("---")
+  # 추가 20문제 생성 버튼
+  if uploaded_file and api_key:
+    if st.button("➕ 20문제 더 만들기"):
+      generate_questions(20)
+      st.rerun()
