@@ -10,7 +10,7 @@ st.set_page_config(
 
 st.title("📚 규은핑의 문제 문제 생성기!!")
 st.write(
-    "PDF를 업로드하면 준피티가 문제를 만듭니다. 잠시 주니 생각을 해주세요..!"
+    "PDF를 업로드하면 준피티가 문제를 만듭니다. 대기할 동안 주니 생각을 해주세요..!"
 )
 st.image("banner.png", use_container_width=True)
 # Streamlit Secrets에 키가 등록되어 있는지 확인 후 자동 로드
