@@ -18,7 +18,6 @@ st.write(
 if "GEMINI_API_KEY" in st.secrets:
   api_key = st.secrets["GEMINI_API_KEY"]
 else:
-  # Secrets가 없을 경우에만 기존 사이드바 설정창 표시
   with st.sidebar:
     st.header("⚙️ 설정")
     api_key = st.text_input("Gemini API Key", type="password")
@@ -37,7 +36,7 @@ uploaded_file = st.file_uploader(
 if uploaded_file and api_key:
   client = genai.Client(api_key=api_key)
 
-  # PDF 텍스트 추출 (세션에 저장하여 중복 추출 방지)
+  # PDF 텍스트 추출 (세션에 저장)
   if "pdf_text" not in st.session_state:
     with st.spinner("📄 PDF 파일 분석 중..."):
       try:
@@ -54,15 +53,14 @@ if uploaded_file and api_key:
 
   text = st.session_state.get("pdf_text", "")
 
-  # 문제 생성 함수 정의 (기존 문제 목록에 이어붙이기)
-  def generate_questions(num_count=20):
+
+  # 문제 생성 함수 (속도를 위해 기본 10문제로 설정)
+  def generate_questions(num_count=10):
     with st.spinner(
-        f"🤖 AI가 강의 내용을 분석하고 {num_count}개의 문제를 출제하고"
-        " 있습니다..."
+        f"🤖 AI가 빛의 속도로 {num_count}개의 문제를 출제하고 있습니다..."
     ):
       prompt = f"""
             다음 강의 텍스트를 바탕으로 핵심을 파악할 수 있는 객관식 문제 {num_count}개를 만들어주세요.
-            기존에 출제된 문제들과 겹치지 않도록 새로운 핵심 내용 위주로 다채롭게 만들어주세요.
             반드시 아래 JSON 형식으로만 응답해주세요. 마크다운 백틱(```json ... ```)을 쓰지 말고 순수 JSON 문자열만 반환해주세요.
             
             [
@@ -75,7 +73,7 @@ if uploaded_file and api_key:
             ]
             
             강의 텍스트:
-            {text[:15000]}
+            {text[:8000]}
             """
       try:
         response = client.models.generate_content(
@@ -95,16 +93,16 @@ if uploaded_file and api_key:
         new_questions = json.loads(res_text.strip())
         if "questions" not in st.session_state:
           st.session_state["questions"] = []
-        # 기존 문제 뒤에 새로운 문제들을 추가(누적)
         st.session_state["questions"].extend(new_questions)
-        st.success(f"✨ {len(new_questions)}개의 문제가 성공적으로 추가되었습니다!")
+        st.success(f"✨ {len(new_questions)}개의 문제가 빠르게 추가되었습니다!")
       except Exception as e:
         st.error(f"AI 문제 생성 중 오류가 발생했습니다: {e}")
 
-  # 최초 문제 생성 버튼
+
+  # 최초 문제 생성 버튼 (10문제)
   if text and "questions" not in st.session_state:
-    if st.button("🚀 AI 문제 생성하기 (20문제)"):
-      generate_questions(20)
+    if st.button("🚀 초고속 AI 문제 생성하기 (10문제)"):
+      generate_questions(10)
       st.rerun()
 
 # 문제가 생성된 경우 화면에 표시
@@ -145,8 +143,8 @@ if "questions" in st.session_state and st.session_state["questions"]:
     st.info(f"**총점: {score} / {len(st.session_state['questions'])}점**")
 
   st.markdown("---")
-  # 추가 20문제 생성 버튼
+  # 추가 10문제 생성 버튼
   if uploaded_file and api_key:
-    if st.button("➕ 20문제 더 만들기"):
-      generate_questions(20)
+    if st.button("➕ 10문제 더 만들기"):
+      generate_questions(10)
       st.rerun()
