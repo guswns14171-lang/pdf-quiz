@@ -2,6 +2,7 @@ import json
 import os
 from PIL import Image
 import streamlit as st
+import streamlit.components.v1 as components
 from google import genai
 from pypdf import PdfReader
 
@@ -59,7 +60,7 @@ if uploaded_file and api_key:
   text = st.session_state.get("pdf_text", "")
 
 
-  # 문제 생성 함수 (성공 시 True, 실패 시 False 반환)
+  # 문제 생성 함수
   def generate_questions(num_count=10):
     with st.spinner(f"🤖 준피티가 문제를 출제하고 있습니다..."):
       limited_text = text[:3000]
@@ -102,7 +103,6 @@ if uploaded_file and api_key:
         st.success(f"✨ {len(new_questions)}개의 문제가 빠르게 생성되었습니다!")
         return True
       except Exception as e:
-        # 에러 메시지를 세션에 저장하여 사라지지 않도록 함
         st.session_state["error_msg"] = str(e)
         return False
 
@@ -111,9 +111,9 @@ if uploaded_file and api_key:
   if text and "questions" not in st.session_state:
     if st.button("🚀 준피티에게 문제 생성 요청하기 (10문제 다 맞으면 선물!)"):
       if generate_questions(10):
-        st.rerun()  # 성공했을 때만 새로고침
+        st.rerun()
 
-  # 에러가 발생했다면 화면에 계속 유지되도록 출력
+  # 에러 메시지 출력
   if "error_msg" in st.session_state:
     st.error(
         f"❌ AI 문제 생성 중 오류가 발생했습니다:\n\n"
@@ -155,7 +155,46 @@ if "questions" in st.session_state and st.session_state["questions"]:
             f"**해설**: {q['explanation']}"
         )
 
-    st.info(f"**총점: {score} / {len(st.session_state['questions'])}점**")
+    # 세션에 점수 저장 (공유 버튼에서 사용하기 위함)
+    st.session_state["last_score"] = score
+    st.session_state["total_len"] = len(st.session_state["questions"])
+    st.info(
+        f"**총점: {st.session_state['last_score']} /"
+        f" {st.session_state['total_len']}점**"
+    )
+
+  # 채점을 완료한 경우 공유 버튼 생성
+  if "last_score" in st.session_state:
+    score = st.session_state["last_score"]
+    total = st.session_state["total_len"]
+    share_text = f"📚 [규은핑의 문제 생성기]\n✨ 나의 시험 결과: 총점 {score} / {total}점 달성! 🎉\n준피티와 함께 공부 완료!"
+
+    st.markdown("### 📤 결과 공유하기")
+
+    # 모바일 기기(아이폰/아이패드/갤럭시)에서 카카오톡을 포함한 공유 시트를 여는 HTML 버튼
+    share_html = f"""
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button onclick="shareResult()" style="background-color: #fee500; color: #191919; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                💬 카카오톡 / SNS로 점수 공유하기
+            </button>
+        </div>
+        <script>
+        function shareResult() {{
+            const text = `{share_text}`;
+            if (navigator.share) {{
+                navigator.share({{
+                    title: '규은핑의 문제 생성기 결과',
+                    text: text,
+                }}).catch(() => {{}});
+            }} else {{
+                navigator.clipboard.writeText(text).then(() => {{
+                    alert('결과가 클립보드에 복사되었습니다! 카카오톡에 붙여넣기 하세요.');
+                }});
+            }}
+        }}
+        </script>
+        """
+    components.html(share_html, height=60)
 
   st.markdown("---")
   # 추가 10문제 생성 버튼
