@@ -55,7 +55,7 @@ if uploaded_file and api_key:
 
   # 문제 생성 함수 (속도를 위해 텍스트 양을 3000자로 최적화)
   def generate_questions(num_count=10):
-    with st.spinner(f"🤖 AI가 10초 내로 문제를 출제하고 있습니다..."):
+    with st.spinner(f"🤖 준피티가 문제를 출제하고 있습니다..."):
       # 속도와 토큰 제한 방지를 위해 텍스트 앞부분 3000자만 사용
       limited_text = text[:3000]
 
@@ -101,7 +101,7 @@ if uploaded_file and api_key:
 
   # 최초 문제 생성 버튼 (10문제)
   if text and "questions" not in st.session_state:
-    if st.button("🚀 준피티에게 문제 생성 요청하기 (10문제 다맞으면 선물!)"):
+    if st.button("🚀 준피티에게 문제 생성 요청하기 (10문제 다 맞으면 선물!)"):
       generate_questions(10)
       st.rerun()
 
@@ -121,17 +121,17 @@ if "questions" in st.session_state and st.session_state["questions"]:
   if st.button("📊 제출 및 채점하기"):
     score = 0
     st.markdown("---")
-    st.subheader("🎯 채점 결과")
+    st.subheader("🎯두구두구 채점 결과")
     for i, q in enumerate(st.session_state["questions"]):
       selected = user_answers.get(i)
       correct_option = q["options"][q["answer"] - 1]
 
       if selected == correct_option:
         score += 1
-        st.success(f"문제 {i+1} 정답! 🎉\n\n> **해설**: {q['explanation']}")
+        st.success(f"문제 {i+1} 사랑해! 🎉\n\n> **해설**: {q['explanation']}")
       elif selected:
         st.error(
-            f"문제 {i+1} 오답... (선택한 답: {selected} / 정답:"
+            f"문제 {i+1} 시러해... (선택한 답: {selected} / 정답:"
             f" '{correct_option}')\n\n> **해설**: {q['explanation']}"
         )
       else:
