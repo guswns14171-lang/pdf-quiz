@@ -101,7 +101,7 @@ if uploaded_file and api_key:
 
   # 최초 문제 생성 버튼 (10문제)
   if text and "questions" not in st.session_state:
-    if st.button("🚀 초고속 AI 문제 생성하기 (10문제)"):
+    if st.button("🚀 준피티에게 문제 생성 요청하기 (10문제 다맞으면 선물!)"):
       generate_questions(10)
       st.rerun()
 
