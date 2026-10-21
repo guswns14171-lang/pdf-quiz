@@ -1,4 +1,6 @@
 import json
+import os
+from PIL import Image
 import streamlit as st
 from google import genai
 from pypdf import PdfReader
@@ -8,11 +10,15 @@ st.set_page_config(
     page_title="규은핑의 문제 생성기", page_icon="📚", layout="centered"
 )
 
-st.title("📚 규은핑의 문제 문제 생성기!!")
+st.title("📚 규은핑의 문제 생성기!!")
 st.write(
     "PDF를 업로드하면 준피티가 문제를 만듭니다. 대기할 동안 주니 생각을 해주세요..!"
 )
-st.image("banner.png", use_container_width=True)
+
+# banner.png가 실제로 있을 때만 이미지를 띄워 에러 방지
+if os.path.exists("banner.png"):
+  st.image("banner.png", use_container_width=True)
+
 # Streamlit Secrets에 키가 등록되어 있는지 확인 후 자동 로드
 if "GEMINI_API_KEY" in st.secrets:
   api_key = st.secrets["GEMINI_API_KEY"]
@@ -53,10 +59,9 @@ if uploaded_file and api_key:
   text = st.session_state.get("pdf_text", "")
 
 
-  # 문제 생성 함수 (속도를 위해 텍스트 양을 3000자로 최적화)
+  # 문제 생성 함수 (성공 시 True, 실패 시 False 반환)
   def generate_questions(num_count=10):
     with st.spinner(f"🤖 준피티가 문제를 출제하고 있습니다..."):
-      # 속도와 토큰 제한 방지를 위해 텍스트 앞부분 3000자만 사용
       limited_text = text[:3000]
 
       prompt = f"""
@@ -95,15 +100,25 @@ if uploaded_file and api_key:
           st.session_state["questions"] = []
         st.session_state["questions"].extend(new_questions)
         st.success(f"✨ {len(new_questions)}개의 문제가 빠르게 생성되었습니다!")
+        return True
       except Exception as e:
-        st.error(f"AI 문제 생성 중 오류가 발생했습니다: {e}")
+        # 에러 메시지를 세션에 저장하여 사라지지 않도록 함
+        st.session_state["error_msg"] = str(e)
+        return False
 
 
   # 최초 문제 생성 버튼 (10문제)
   if text and "questions" not in st.session_state:
     if st.button("🚀 준피티에게 문제 생성 요청하기 (10문제 다 맞으면 선물!)"):
-      generate_questions(10)
-      st.rerun()
+      if generate_questions(10):
+        st.rerun()  # 성공했을 때만 새로고침
+
+  # 에러가 발생했다면 화면에 계속 유지되도록 출력
+  if "error_msg" in st.session_state:
+    st.error(
+        f"❌ AI 문제 생성 중 오류가 발생했습니다:\n\n"
+        f"{st.session_state['error_msg']}"
+    )
 
 # 문제가 생성된 경우 화면에 표시
 if "questions" in st.session_state and st.session_state["questions"]:
@@ -146,5 +161,5 @@ if "questions" in st.session_state and st.session_state["questions"]:
   # 추가 10문제 생성 버튼
   if uploaded_file and api_key:
     if st.button("➕ 10문제 더 만들기"):
-      generate_questions(10)
-      st.rerun()
+      if generate_questions(10):
+        st.rerun()
