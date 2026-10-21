@@ -5,15 +5,14 @@ from pypdf import PdfReader
 
 # 페이지 기본 설정
 st.set_page_config(
-    page_title="PDF 문제 생성기", page_icon="📚", layout="centered"
+    page_title="규은핑의 문제 생성기", page_icon="📚", layout="centered"
 )
 
-st.title("📚 PDF 강의 자료 문제 생성기")
+st.title("📚 규은핑의 문제 문제 생성기!!")
 st.write(
-    "PDF를 업로드하면 AI가 문제를 만들고, 스마트폰이나 아이패드에서 바로 풀 수"
-    " 있습니다!"
+    "PDF를 업로드하면 준피티가 문제를 만듭니다. 잠시 주니 생각을 해주세요..!"
 )
-
+st.image("banner.png", use_container_width=True)
 # Streamlit Secrets에 키가 등록되어 있는지 확인 후 자동 로드
 if "GEMINI_API_KEY" in st.secrets:
   api_key = st.secrets["GEMINI_API_KEY"]
