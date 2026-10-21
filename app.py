@@ -135,8 +135,10 @@ if "questions" in st.session_state and st.session_state["questions"]:
 
   if st.button("📊 제출 및 채점하기"):
     score = 0
+    wrong_list = []
     st.markdown("---")
     st.subheader("🎯두구두구 채점 결과")
+
     for i, q in enumerate(st.session_state["questions"]):
       selected = user_answers.get(i)
       correct_option = q["options"][q["answer"] - 1]
@@ -149,29 +151,62 @@ if "questions" in st.session_state and st.session_state["questions"]:
             f"문제 {i+1} 시러해... (선택한 답: {selected} / 정답:"
             f" '{correct_option}')\n\n> **해설**: {q['explanation']}"
         )
+        wrong_list.append(q)  # 오답 노트용 수집
       else:
         st.warning(
             f"문제 {i+1}을 풀지 않았습니다. (정답: '{correct_option}')\n\n> "
             f"**해설**: {q['explanation']}"
         )
+        wrong_list.append(q)  # 안 푼 것도 오답 노트에 포함
 
-    # 세션에 점수 저장 (공유 버튼에서 사용하기 위함)
+    total_len = len(st.session_state["questions"])
+    ratio = score / total_len
+
+    # [칭호 시스템] 점수 비율별 칭호 부여
+    if ratio == 1.0:
+      user_title = "🏆 규은핑! 준피티 퀴즈 졸업 축하해! (주니에게 선물을 요청하세요.)"
+    elif ratio >= 0.7:
+      user_title = "✨ 규은핑 얼마 안 남았어 이대로 멈춰!?"
+    elif ratio >= 0.4:
+      user_title = "📚 규은핑.. 열심히 말고 잘하자"
+    else:
+      user_title = "😭 규은핑.. 공부 말고 다른 재능을 찾아볼까?"
+
     st.session_state["last_score"] = score
-    st.session_state["total_len"] = len(st.session_state["questions"])
+    st.session_state["total_len"] = total_len
+    st.session_state["user_title"] = user_title
+    st.session_state["wrong_list"] = wrong_list
+
     st.info(
-        f"**총점: {st.session_state['last_score']} /"
-        f" {st.session_state['total_len']}점**"
+        f"**총점: {score} / {total_len}점**\n\n"
+        f"👑 **나의 칭호**: {user_title}"
     )
 
-  # 채점을 완료한 경우 공유 버튼 생성
+  # [오답 노트 모드] 틀린 문제가 있을 때 표시
+  if (
+      "wrong_list" in st.session_state
+      and len(st.session_state["wrong_list"]) > 0
+  ):
+    st.markdown("---")
+    st.error(
+        f"🚨 **오답 노트 알림**: 틀린 문제({len(st.session_state['wrong_list'])}개)가"
+        " 있습니다!"
+    )
+    if st.button("❌ 틀린 문제만 모아서 다시 풀기"):
+      st.session_state["questions"] = st.session_state["wrong_list"]
+      del st.session_state["last_score"]
+      del st.session_state["wrong_list"]
+      st.rerun()
+
+  # 채점 완료 후 결과 공유 버튼
   if "last_score" in st.session_state:
     score = st.session_state["last_score"]
     total = st.session_state["total_len"]
-    share_text = f"📚 [규은핑의 문제 생성기]\n✨ 나의 시험 결과: 총점 {score} / {total}점 달성! 🎉\n준피티와 함께 공부 완료!"
+    title = st.session_state["user_title"]
+    share_text = f"📚 [규은핑의 문제 생성기]\n✨ 시험 결과: 총점 {score} / {total}점\n👑 칭호: {title}\n준피티와 함께 공부 완료! 🎉"
 
     st.markdown("### 📤 결과 공유하기")
 
-    # 모바일 기기(아이폰/아이패드/갤럭시)에서 카카오톡을 포함한 공유 시트를 여는 HTML 버튼
     share_html = f"""
         <div style="display: flex; gap: 10px; justify-content: center;">
             <button onclick="shareResult()" style="background-color: #fee500; color: #191919; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
